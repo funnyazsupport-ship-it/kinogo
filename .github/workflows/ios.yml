@@ -35,16 +35,22 @@ jobs:
       - name: Build iOS (no code signing)
         run: flutter build ios --release --no-codesign
 
-      - name: Zip .app
+      # Wrap the .app into an UNSIGNED .ipa. This cannot be installed directly,
+      # but sideloading tools (AltStore / SideStore / Sideloadly) sign it on
+      # your device with a FREE Apple ID at install time — no paid account.
+      - name: Package unsigned .ipa
         run: |
           cd build/ios/iphoneos
-          zip -r -y Runner.app.zip Runner.app
+          mkdir -p Payload
+          cp -R Runner.app Payload/
+          zip -r -y kinogo-unsigned.ipa Payload
+          ls -lh kinogo-unsigned.ipa
 
-      - name: Upload artifact
+      - name: Upload .ipa
         uses: actions/upload-artifact@v4
         with:
-          name: kinogo-ios-unsigned
-          path: build/ios/iphoneos/Runner.app.zip
+          name: kinogo-unsigned-ipa
+          path: build/ios/iphoneos/kinogo-unsigned.ipa
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
