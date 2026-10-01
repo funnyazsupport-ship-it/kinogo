@@ -1,0 +1,89 @@
+name: kinogo
+description: "KinoGo"
+publish_to: 'none'
+
+# Matches the reconstructed Android build (versionName 1.2.3, versionCode 14).
+version: 1.2.3+14
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # State management (Riverpod) — matches package:kinogo/.../providers.
+  flutter_riverpod: ^2.6.1
+
+  # Routing — matches core/navigation/app_routes.dart (go_router).
+  go_router: ^14.6.2
+
+  # Networking — matches core/api/api_client.dart (Dio + interceptors).
+  dio: ^5.7.0
+  crypto: ^3.0.6               # X-App-Signature HMAC in signature_interceptor.dart
+
+  # Storage.
+  flutter_secure_storage: ^9.2.2   # core/storage/secure_storage.dart (auth tokens)
+  shared_preferences: ^2.3.3       # core/storage/preferences_storage.dart
+  sqflite: ^2.4.1                  # history/cache db (PRAGMA user_version = 3)
+  path: ^1.9.0
+  path_provider: ^2.1.5
+
+  # In-app video player / embeds — matches features/movie/player_screen.dart.
+  webview_flutter: ^4.10.0
+  webview_flutter_wkwebview: ^3.18.5   # iOS WKWebView implementation
+
+  # Images.
+  cached_network_image: ^3.4.1
+
+  # Profile avatar picking — features/profile + ImagePicker provider in manifest.
+  image_picker: ^1.1.2
+
+  # Utilities seen in the binary.
+  uuid: ^4.5.1
+  url_launcher: ^6.3.1
+  package_info_plus: ^8.1.2
+  html_unescape: ^2.0.0            # shared/utils/html_entities.dart, html_stripper.dart
+
+  # Splash — flutter_native_splash is referenced in the binary.
+  flutter_native_splash: ^2.4.3
+
+  # Firebase Analytics (soft-initialised; see core/analytics/analytics_service.dart).
+  firebase_core: ^3.8.0
+  firebase_analytics: ^11.3.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.2
+
+# App icons generated from the original KinoGo icon.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/icons/kinogo_app_icon.png"
+  background_color_ios: "#1a1a1a"
+  adaptive_icon_background: "#1a1a1a"
+  adaptive_icon_foreground: "assets/icons/kinogo_app_icon.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/images/categories/
+
+# Dark launch/splash background matches ic_launcher_background #1a1a1a.
+flutter_native_splash:
+  color: "#1a1a1a"
+  image: assets/images/kinogo_app_logo.png
+  android_12:
+    color: "#1a1a1a"
+    image: assets/images/kinogo_app_logo.png
+  ios: true
+  android: true
