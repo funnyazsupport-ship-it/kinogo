@@ -1,37 +1,25 @@
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/api/api_endpoints.dart';
 import '../../../core/api/api_providers.dart';
-import '../../../core/api/mock_data.dart';
-import '../../../core/config/app_config.dart';
+import '../../../core/api/kinogo_web_service.dart';
 import '../../../shared/models/filter_state.dart';
 import '../../../shared/models/paginated_response.dart';
 import '../../../shared/models/post.dart';
 
-/// Loads posts for a category (`/v1/post/by-category/<slug>`).
-/// Mirrors `features/category_detail/data/category_detail_repository.dart`.
+/// Loads posts for a category.
 class CategoryDetailRepository {
-  CategoryDetailRepository(this._dio);
-  final Dio _dio;
+  CategoryDetailRepository(this._service);
+  final KinogoWebService _service;
 
   Future<PaginatedResponse<Post>> fetch({
     required String slug,
     int page = 1,
     FilterState filter = const FilterState(),
   }) async {
-    if (AppConfig.useMockData) {
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      return MockData.posts(page: page, category: slug);
-    }
-    final resp = await _dio.get(
-      ApiEndpoints.postsByCategory(slug),
-      queryParameters: {'page': page, ...filter.toQuery()},
-    );
-    return PaginatedResponse.fromJson(resp.data, Post.fromJson);
+    return _service.fetchCategoryPosts(slug, page: page);
   }
 }
 
 final categoryDetailRepositoryProvider = Provider<CategoryDetailRepository>(
-  (ref) => CategoryDetailRepository(ref.watch(dioProvider)),
+  (ref) => CategoryDetailRepository(ref.watch(kinogoWebServiceProvider)),
 );

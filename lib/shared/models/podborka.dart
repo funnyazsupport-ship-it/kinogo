@@ -6,6 +6,7 @@ class Podborka {
   const Podborka({
     required this.id,
     required this.title,
+    this.slug,
     this.description,
     this.poster,
     this.itemCount = 0,
@@ -14,6 +15,9 @@ class Podborka {
 
   final int id;
   final String title;
+
+  /// Site path of the collection's post list (e.g. `xfsearch/podborki/Marvel`).
+  final String? slug;
   final String? description;
   final String? poster;
   final int itemCount;
@@ -32,6 +36,7 @@ class Podborka {
     return Podborka(
       id: asInt(json['id']),
       title: '${json['title'] ?? json['name'] ?? ''}',
+      slug: json['slug']?.toString(),
       description: json['description']?.toString(),
       poster: (json['poster'] ?? json['image'])?.toString(),
       itemCount: asInt(json['count'] ?? rawItems?.length),

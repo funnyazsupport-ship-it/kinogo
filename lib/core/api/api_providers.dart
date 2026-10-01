@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../storage/preferences_storage.dart';
 import '../storage/secure_storage.dart';
 import 'api_client.dart';
+import 'kinogo_web_service.dart';
 
 /// Base dependency-injection providers. Mirrors `core/api/api_providers.dart`.
 
@@ -23,3 +24,7 @@ final apiClientProvider = Provider<ApiClient>(
 );
 
 final dioProvider = Provider<Dio>((ref) => ref.watch(apiClientProvider).dio);
+
+final kinogoWebServiceProvider = Provider<KinogoWebService>(
+  (ref) => KinogoWebService(),
+);
