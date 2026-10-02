@@ -35,9 +35,11 @@ class KinogoWebService {
   late final Dio _dio;
   final _unescape = HtmlUnescape();
 
-  /// Movie pages are requested by several providers at once (details, player,
-  /// comments), so the in-flight/last few pages are shared.
-  final _pageCache = <int, Future<String>>{};
+  /// Movie pages are requested by several providers at once (details,
+  /// related, comments), so the in-flight/last few pages are shared — but only
+  /// briefly: the player links inside a page stop working after a while.
+  final _pageCache = <int, ({Future<String> page, DateTime loadedAt})>{};
+  static const _pageCacheTtl = Duration(minutes: 2);
 
   /// Franchise id → site path, filled while listing franchises.
   final _franchisePaths = <int, String>{};
@@ -87,15 +89,20 @@ class KinogoWebService {
     );
   }
 
-  Future<String> _moviePage(int id) {
+  Future<String> _moviePage(int id, {bool fresh = false}) {
     final cached = _pageCache[id];
-    if (cached != null) return cached;
+    if (!fresh &&
+        cached != null &&
+        DateTime.now().difference(cached.loadedAt) < _pageCacheTtl) {
+      return cached.page;
+    }
+    _pageCache.remove(id);
     if (_pageCache.length >= 8) _pageCache.remove(_pageCache.keys.first);
     // `/<id>-.html` redirects to the canonical `/<id>-<slug>.html`.
     final future = _get('/$id-.html');
-    _pageCache[id] = future;
+    _pageCache[id] = (page: future, loadedAt: DateTime.now());
     future.then<void>((_) {}, onError: (Object _) {
-      _pageCache.remove(id);
+      if (identical(_pageCache[id]?.page, future)) _pageCache.remove(id);
     });
     return future;
   }
@@ -343,8 +350,11 @@ class KinogoWebService {
     );
   }
 
+  /// Player links are short-lived and tied to the page they came with, so
+  /// the page is always loaded anew here; a remembered link ends in the
+  /// player's "HTTP 403" error.
   Future<PlayerResponse> fetchPlayer(int id) async {
-    final html = await _moviePage(id);
+    final html = await _moviePage(id, fresh: true);
     final variants = <PlayerVariant>[];
 
     void add(String? rawSrc, String title) {
@@ -372,6 +382,48 @@ class KinogoWebService {
 
     final primary = variants.isNotEmpty ? variants.first.url : '';
     return PlayerResponse(embedUrl: primary, variants: variants);
+  }
+
+  /// Loads the page of the site's main player (PlayerJS-based "Cinemar") so
+  /// it can be shown directly instead of inside a frame, which is what lets
+  /// the app follow the watch position. Returns null for any other player.
+  Future<EmbedPage?> fetchEmbedPage(String url) async {
+    try {
+      // The player host only answers requests coming from the site.
+      final html = await _get(url, headers: {'Referer': '${AppConfig.siteBaseUrl}/'});
+      final cuid = _first(html, r'"cuid":"([^"]+)"');
+      if (cuid == null || !html.contains('Cinemar(')) return null;
+      return EmbedPage(
+        html: html,
+        // Where PlayerJS keeps the position: `pljsplayfrom_<host><cuid>`.
+        storageKey: 'pljsplayfrom_${Uri.parse(url).host}$cuid',
+      );
+    } on DioException {
+      return null;
+    }
+  }
+
+  /// The "Рекомендации к просмотру" block of a movie page.
+  Future<List<Post>> fetchRelated(int id) async {
+    final html = await _moviePage(id);
+    final posts = <Post>[];
+    final pattern = RegExp(
+      r'<a[^>]+href="[^"]*/(\d+)-[^"/]*\.html"[^>]*class="relatednews__item"[^>]*>(.*?)</a>',
+      dotAll: true,
+    );
+    for (final m in pattern.allMatches(html)) {
+      final postId = int.parse(m.group(1)!);
+      if (postId == id) continue;
+      final block = m.group(2)!;
+      final (title, year) = _splitTitle(_text(block));
+      posts.add(Post(
+        id: postId,
+        title: title.isNotEmpty ? title : 'Фильм $postId',
+        poster: _image(block),
+        year: year,
+      ));
+    }
+    return posts;
   }
 
   Future<List<Comment>> fetchComments(int id) async {

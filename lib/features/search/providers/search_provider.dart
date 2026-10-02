@@ -1,23 +1,23 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/models/paginated_response.dart';
 import '../../../shared/models/post.dart';
+import '../../../shared/pagination/paginated_notifier.dart';
+import '../../../shared/pagination/paginated_state.dart';
 import '../data/search_repository.dart';
 
-/// Current search query.
-final searchQueryProvider = StateProvider<String>((ref) => '');
+class SearchNotifier extends PaginatedNotifier<Post> {
+  SearchNotifier(this._repo, this.query);
+  final SearchRepository _repo;
+  final String query;
 
-/// Search results for the active query. Each query costs a full page load on
-/// the site, so typing is debounced instead of searching on every keystroke.
-final searchResultsProvider = FutureProvider<List<Post>>((ref) async {
-  final query = ref.watch(searchQueryProvider).trim();
-  if (query.isEmpty) return const [];
+  @override
+  Future<PaginatedResponse<Post>> fetchPage(int page) =>
+      _repo.fullSearch(query, page: page);
+}
 
-  var superseded = false;
-  ref.onDispose(() => superseded = true);
-  await Future<void>.delayed(const Duration(milliseconds: 450));
-  if (superseded) return const [];
-
-  final repo = ref.watch(searchRepositoryProvider);
-  final res = await repo.fullSearch(query);
-  return res.items;
-});
+/// Paged search results, keyed by the query.
+final searchProvider = StateNotifierProvider.autoDispose
+    .family<SearchNotifier, PaginatedState<Post>, String>(
+  (ref, query) => SearchNotifier(ref.watch(searchRepositoryProvider), query),
+);

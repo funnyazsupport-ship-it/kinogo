@@ -8,6 +8,10 @@ import 'kp_rating_badge.dart';
 import 'quality_badge.dart';
 
 /// Poster card used across grids and carousels. Tapping opens the movie screen.
+///
+/// The card fills the height it is given (a grid cell, a fixed-height row):
+/// the poster takes whatever the title and year leave, so a two-line title
+/// never pushes the year out of the card.
 class MovieCard extends StatelessWidget {
   const MovieCard({super.key, required this.post, this.width});
 
@@ -23,10 +27,8 @@ class MovieCard extends StatelessWidget {
         width: width,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
-            AspectRatio(
-              aspectRatio: 2 / 3,
+            Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Stack(
@@ -35,6 +37,7 @@ class MovieCard extends StatelessWidget {
                     _Poster(post.posterUrl, title: post.title),
                     Positioned(
                       left: 6,
+                      right: 6,
                       top: 6,
                       child: Row(
                         children: [
@@ -42,7 +45,7 @@ class MovieCard extends StatelessWidget {
                             KpRatingBadge(rating),
                           if (post.quality != null) ...[
                             const SizedBox(width: 4),
-                            QualityBadge(post.quality!),
+                            Flexible(child: QualityBadge(post.quality!)),
                           ],
                         ],
                       ),
@@ -65,6 +68,7 @@ class MovieCard extends StatelessWidget {
             if (post.year != null)
               Text(
                 post.year!,
+                maxLines: 1,
                 style: const TextStyle(
                   fontSize: 11,
                   color: AppTheme.textSecondary,

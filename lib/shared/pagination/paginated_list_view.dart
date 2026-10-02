@@ -17,13 +17,17 @@ class PaginatedPostGrid extends StatefulWidget {
     required this.onRefresh,
     this.header,
     this.emptyMessage = 'Ничего не найдено',
+    this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
   });
 
   final PaginatedState<Post> state;
   final VoidCallback onLoadMore;
   final Future<void> Function() onRefresh;
+
+  /// Shown above the grid — also while it is loading, empty or failed.
   final Widget? header;
   final String emptyMessage;
+  final ScrollViewKeyboardDismissBehavior keyboardDismissBehavior;
 
   @override
   State<PaginatedPostGrid> createState() => _PaginatedPostGridState();
@@ -35,12 +39,16 @@ class _PaginatedPostGridState extends State<PaginatedPostGrid> {
   @override
   void initState() {
     super.initState();
-    _controller.addListener(_onScroll);
+    _controller.addListener(_loadMoreIfNeeded);
   }
 
-  void _onScroll() {
-    if (_controller.position.pixels >=
-        _controller.position.maxScrollExtent - 600) {
+  /// Near the bottom — or when the loaded items do not even fill the screen
+  /// (a wide tablet shows a whole page in two rows), in which case there is
+  /// nothing to scroll and the next page would otherwise never be requested.
+  void _loadMoreIfNeeded() {
+    if (!_controller.hasClients) return;
+    final position = _controller.position;
+    if (position.pixels >= position.maxScrollExtent - 600) {
       widget.onLoadMore();
     }
   }
@@ -51,25 +59,40 @@ class _PaginatedPostGridState extends State<PaginatedPostGrid> {
     super.dispose();
   }
 
+  Widget _withHeader(Widget body) {
+    final header = widget.header;
+    if (header == null) return body;
+    return Column(children: [header, Expanded(child: body)]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = widget.state;
 
     if (s.isLoadingFirst) {
-      return const Center(child: CircularProgressIndicator());
+      return _withHeader(const Center(child: CircularProgressIndicator()));
     }
     if (s.error != null && s.items.isEmpty) {
-      return ErrorRetryRow(onRetry: widget.onRefresh);
+      return _withHeader(ErrorRetryRow(onRetry: widget.onRefresh));
     }
     if (s.isEmpty) {
-      return EmptyState(icon: Icons.movie_filter_outlined, message: widget.emptyMessage);
+      return _withHeader(EmptyState(
+        icon: Icons.movie_filter_outlined,
+        message: widget.emptyMessage,
+      ));
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadMoreIfNeeded();
+    });
 
     return RefreshIndicator(
       color: AppTheme.accent,
       onRefresh: widget.onRefresh,
       child: CustomScrollView(
         controller: _controller,
+        physics: const AlwaysScrollableScrollPhysics(),
+        keyboardDismissBehavior: widget.keyboardDismissBehavior,
         slivers: [
           if (widget.header != null)
             SliverToBoxAdapter(child: widget.header),

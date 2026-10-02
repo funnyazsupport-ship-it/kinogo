@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../shared/pagination/paginated_list_view.dart';
+import '../history/widgets/recently_watched_row.dart';
 import 'providers/home_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -24,7 +25,8 @@ class HomeScreen extends ConsumerWidget {
           ),
           IconButton(
             icon: const Icon(Icons.search),
-            onPressed: () => context.push('/search'),
+            tooltip: 'Поиск',
+            onPressed: () => context.go('/search'),
           ),
         ],
       ),
@@ -33,6 +35,8 @@ class HomeScreen extends ConsumerWidget {
         onLoadMore: notifier.loadMore,
         onRefresh: notifier.refresh,
         emptyMessage: 'Пока нет фильмов',
+        // Shown right away, before the feed has loaded.
+        header: const RecentlyWatchedRow(),
       ),
     );
   }

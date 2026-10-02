@@ -49,3 +49,13 @@ class PlayerVariant {
         url: '${json['url'] ?? json['iframe'] ?? json['embed'] ?? ''}',
       );
 }
+
+/// A player's own page, loaded so it can be shown without a frame around it.
+class EmbedPage {
+  const EmbedPage({required this.html, required this.storageKey});
+
+  final String html;
+
+  /// `localStorage` key under which the player keeps the watch position.
+  final String storageKey;
+}

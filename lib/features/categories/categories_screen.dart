@@ -17,7 +17,7 @@ class CategoriesScreen extends ConsumerWidget {
       case CategoryKind.podborki:
         context.push('/podborki');
       case CategoryKind.posts:
-        context.push('/categories/category/${c.slug}', extra: c.title);
+        context.push('/category/${c.slug}', extra: c.title);
     }
   }
 

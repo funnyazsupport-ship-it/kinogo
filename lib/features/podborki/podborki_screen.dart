@@ -58,7 +58,7 @@ class _PodborkaTile extends StatelessWidget {
       onTap: slug == null
           ? null
           : () => context.push(
-                '/categories/category/${Uri.encodeComponent(slug)}',
+                '/category/${Uri.encodeComponent(slug)}',
                 extra: podborka.title,
               ),
       child: ClipRRect(

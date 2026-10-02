@@ -10,6 +10,8 @@ import '../../shared/widgets/kp_rating_badge.dart';
 import '../../shared/widgets/movie_card.dart';
 import '../favorites/providers/favorites_provider.dart';
 import '../history/providers/history_provider.dart';
+import '../history/providers/watch_progress_provider.dart';
+import 'player_screen.dart';
 import 'providers/movie_provider.dart';
 import 'widgets/movie_comments.dart';
 
@@ -42,6 +44,15 @@ class _MovieBody extends ConsumerWidget {
     final related = ref.watch(relatedProvider(post.id));
     final isFavorite =
         ref.watch(favoritesProvider).any((p) => p.id == post.id);
+    final progress = ref.watch(watchProgressProvider)[post.id];
+
+    void play({required bool resume}) {
+      ref.read(historyProvider.notifier).add(post);
+      context.push(
+        '/movie/${post.id}/player',
+        extra: PlayerArgs(title: post.title, resume: resume),
+      );
+    }
     final rating = post.kinopoiskRating ?? post.imdbRating ?? post.rating;
 
     return CustomScrollView(
@@ -113,14 +124,27 @@ class _MovieBody extends ConsumerWidget {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: () {
-                      ref.read(historyProvider.notifier).add(post);
-                      context.push('/movie/${post.id}/player', extra: post.title);
-                    },
+                    onPressed: () => play(resume: false),
                     icon: const Icon(Icons.play_arrow_rounded),
                     label: const Text('Смотреть'),
                   ),
                 ),
+                if (progress != null && progress.canResume) ...[
+                  const SizedBox(height: 8),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: () => play(resume: true),
+                      icon: const Icon(Icons.history, size: 18),
+                      label: Text(
+                        progress.resumeLabel,
+                        textAlign: TextAlign.center,
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppTheme.accent,
+                      ),
+                    ),
+                  ),
+                ],
                 if (post.description != null) ...[
                   const SizedBox(height: 16),
                   Text(post.description!,
@@ -133,7 +157,7 @@ class _MovieBody extends ConsumerWidget {
                       : Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Похожее',
+                            const Text('Рекомендации',
                                 style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700)),

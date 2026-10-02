@@ -42,6 +42,23 @@ Future<void> main() async {
     print('     ${v.title}: ${Uri.parse(v.url).host}');
   }
 
+  // The main player's own page: shown directly so the app can follow the
+  // watch position.
+  final embed = await service.fetchEmbedPage(player.embedUrl);
+  check(
+      'player page',
+      embed != null &&
+          embed.html.contains('Cinemar(') &&
+          embed.storageKey.startsWith('pljsplayfrom_'),
+      'storageKey=${embed?.storageKey}');
+  // A page that is not the site's main player is left to the framed mode.
+  check('other pages are not taken for the player',
+      await service.fetchEmbedPage('https://kinogo-10.biz/') == null);
+
+  final related = await service.fetchRelated(id);
+  check('related', related.isNotEmpty && related.every((p) => p.id != id),
+      '${related.length}: ${related.take(2).map((p) => '${p.title} (${p.year}) ${p.posterUrl}').join('; ')}');
+
   final comments = await service.fetchComments(id);
   check('comments', comments.isNotEmpty, '${comments.length}');
   if (comments.isNotEmpty) print('     ${comments.first.author} (${comments.first.date}): ${comments.first.text}');

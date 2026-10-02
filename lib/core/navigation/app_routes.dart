@@ -17,84 +17,74 @@ import '../../shared/widgets/app_shell.dart';
 
 /// App router. Mirrors `core/navigation/app_routes.dart`.
 final _rootKey = GlobalKey<NavigatorState>();
-final _shellKey = GlobalKey<NavigatorState>();
-
-int _tabIndex(String location) {
-  if (location.startsWith('/categories')) return 1;
-  if (location.startsWith('/search')) return 2;
-  if (location.startsWith('/favorites')) return 3;
-  if (location.startsWith('/history')) return 4;
-  return 0;
-}
 
 final appRouter = GoRouter(
   navigatorKey: _rootKey,
   initialLocation: '/home',
   routes: [
-    ShellRoute(
-      navigatorKey: _shellKey,
-      builder: (context, state, child) => AppShell(
-        currentIndex: _tabIndex(state.uri.path),
-        child: child,
-      ),
-      routes: [
-        GoRoute(
-          path: '/home',
-          builder: (_, __) => const HomeScreen(),
-        ),
-        GoRoute(
-          path: '/categories',
-          builder: (_, __) => const CategoriesScreen(),
-          routes: [
-            GoRoute(
-              path: 'category/:slug',
-              parentNavigatorKey: _rootKey,
-              builder: (_, state) => CategoryDetailScreen(
-                slug: state.pathParameters['slug']!,
-                title: state.extra as String?,
-              ),
-            ),
-          ],
-        ),
-        GoRoute(
-          path: '/search',
-          builder: (_, __) => const SearchScreen(),
-        ),
-        GoRoute(
-          path: '/favorites',
-          builder: (_, __) => const FavoritesScreen(),
-        ),
-        GoRoute(
-          path: '/history',
-          builder: (_, __) => const HistoryScreen(),
-        ),
+    // Each tab keeps its own state (scroll position, typed query) while the
+    // user is on another tab.
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) =>
+          AppShell(navigationShell: navigationShell),
+      branches: [
+        StatefulShellBranch(routes: [
+          GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
+        ]),
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/categories',
+            builder: (_, __) => const CategoriesScreen(),
+          ),
+        ]),
+        StatefulShellBranch(routes: [
+          GoRoute(path: '/search', builder: (_, __) => const SearchScreen()),
+        ]),
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/favorites',
+            builder: (_, __) => const FavoritesScreen(),
+          ),
+        ]),
+        StatefulShellBranch(routes: [
+          GoRoute(path: '/history', builder: (_, __) => const HistoryScreen()),
+        ]),
       ],
     ),
     // Detail routes (cover the bottom navigation).
     GoRoute(
+      path: '/category/:slug',
+      builder: (_, state) => CategoryDetailScreen(
+        slug: state.pathParameters['slug']!,
+        title: state.extra as String?,
+      ),
+    ),
+    GoRoute(
       path: '/movie/:id',
-      parentNavigatorKey: _rootKey,
       builder: (_, state) =>
           MovieScreen(id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0),
       routes: [
         GoRoute(
           path: 'player',
-          parentNavigatorKey: _rootKey,
-          builder: (_, state) => PlayerScreen(
-            id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-            title: state.extra as String?,
-          ),
+          builder: (_, state) {
+            final args = state.extra is PlayerArgs
+                ? state.extra as PlayerArgs
+                : const PlayerArgs();
+            return PlayerScreen(
+              id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+              title: args.title,
+              resume: args.resume,
+            );
+          },
         ),
       ],
     ),
     GoRoute(
       path: '/franchises',
-      parentNavigatorKey: _rootKey,
       builder: (_, __) => const FranchiseListScreen(),
     ),
     GoRoute(
       path: '/franchise/:id',
-      parentNavigatorKey: _rootKey,
       builder: (_, state) => FranchiseDetailScreen(
         id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
         title: state.extra as String?,
@@ -102,12 +92,10 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/podborki',
-      parentNavigatorKey: _rootKey,
       builder: (_, __) => const PodborkiScreen(),
     ),
     GoRoute(
       path: '/catalog',
-      parentNavigatorKey: _rootKey,
       builder: (_, __) => const CatalogScreen(),
     ),
   ],
