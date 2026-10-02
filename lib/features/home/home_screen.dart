@@ -18,6 +18,11 @@ class HomeScreen extends ConsumerWidget {
         title: const Text('KinoGo'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.tune),
+            tooltip: 'Фильтр',
+            onPressed: () => context.push('/catalog'),
+          ),
+          IconButton(
             icon: const Icon(Icons.search),
             onPressed: () => context.push('/search'),
           ),

@@ -16,9 +16,20 @@ class SearchScreen extends ConsumerStatefulWidget {
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
+  final _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(_onFocusChanged);
+  }
+
+  void _onFocusChanged() => setState(() {});
 
   @override
   void dispose() {
+    _focus.removeListener(_onFocusChanged);
+    _focus.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -30,8 +41,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        // iOS has no system button for closing the keyboard, so the search
+        // bar offers one while the field is being edited.
+        leading: _focus.hasFocus
+            ? IconButton(
+                icon: const Icon(Icons.keyboard_arrow_down, size: 30),
+                tooltip: 'Скрыть клавиатуру',
+                onPressed: _focus.unfocus,
+              )
+            : null,
+        titleSpacing: _focus.hasFocus ? 0 : null,
         title: TextField(
           controller: _controller,
+          focusNode: _focus,
           autofocus: true,
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
@@ -49,35 +71,44 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ),
           onChanged: (v) =>
               ref.read(searchQueryProvider.notifier).state = v,
+          onSubmitted: (_) => _focus.unfocus(),
         ),
+        actions: const [SizedBox(width: 12)],
       ),
-      body: query.trim().isEmpty
-          ? const EmptyState(
-              icon: Icons.search,
-              message: 'Введите название для поиска',
-            )
-          : results.when(
-              data: (items) => items.isEmpty
-                  ? const EmptyState(message: 'Ничего не найдено')
-                  : GridView.builder(
-                      padding: const EdgeInsets.all(12),
-                      gridDelegate:
-                          const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 160,
-                        childAspectRatio: 0.52,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 14,
+      // Tapping outside the field or scrolling the results also closes it.
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _focus.unfocus,
+        child: query.trim().isEmpty
+            ? const EmptyState(
+                icon: Icons.search,
+                message: 'Введите название для поиска',
+              )
+            : results.when(
+                data: (items) => items.isEmpty
+                    ? const EmptyState(message: 'Ничего не найдено')
+                    : GridView.builder(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        padding: const EdgeInsets.all(12),
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 160,
+                          childAspectRatio: 0.52,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 14,
+                        ),
+                        itemCount: items.length,
+                        itemBuilder: (_, i) => MovieCard(post: items[i]),
                       ),
-                      itemCount: items.length,
-                      itemBuilder: (_, i) => MovieCard(post: items[i]),
-                    ),
-              loading: () => const Center(
-                child: CircularProgressIndicator(color: AppTheme.accent),
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: AppTheme.accent),
+                ),
+                error: (_, __) => ErrorRetryRow(
+                  onRetry: () => ref.invalidate(searchResultsProvider),
+                ),
               ),
-              error: (_, __) => ErrorRetryRow(
-                onRetry: () => ref.invalidate(searchResultsProvider),
-              ),
-            ),
+      ),
     );
   }
 }

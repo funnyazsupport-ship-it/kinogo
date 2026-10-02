@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:html_unescape/html_unescape.dart';
 
 import '../../shared/models/comment.dart';
+import '../../shared/models/filter_state.dart';
+import '../../shared/models/filters_config.dart';
 import '../../shared/models/franchise.dart';
 import '../../shared/models/paginated_response.dart';
 import '../../shared/models/player_response.dart';
@@ -62,12 +66,13 @@ class KinogoWebService {
   /// Redirects are followed by hand: the automatic follow-up request does not
   /// carry the mobile User-Agent, and the site then answers with its desktop
   /// template, which this parser does not understand.
-  Future<String> _get(String path) async {
+  Future<String> _get(String path, {Map<String, String>? headers}) async {
     var target = path;
     for (var hop = 0; hop < 4; hop++) {
       final resp = await _dio.get<String>(
         target,
         options: Options(
+          headers: headers,
           followRedirects: false,
           validateStatus: (s) => s != null && s >= 200 && s < 400,
         ),
@@ -142,6 +147,76 @@ class KinogoWebService {
     if (query.trim().isEmpty) return const [];
     final res = await search(query, page: 1);
     return res.items.take(8).toList();
+  }
+
+  // --------------------------------------------------------------- filter
+
+  /// The filter's fields and options are published on the home page.
+  Future<FiltersConfig> fetchFiltersConfig() async {
+    final html = await _get('/');
+    final raw = _first(html, r'window\.__XSORT__\s*=\s*(\{.*?\})\s*;?\s*</script>');
+    if (raw == null) throw const FormatException('Filter config not found');
+    final filter = (jsonDecode(raw) as Map<String, dynamic>)['filter'] as Map<String, dynamic>;
+
+    final fields = <FilterField>[];
+    filter.forEach((key, value) {
+      final data = value as Map<String, dynamic>;
+      final options = <FilterOption>[
+        for (final o in (data['values'] as List? ?? const []).whereType<Map<String, dynamic>>())
+          if (int.tryParse('${o['id']}') case final id?)
+            FilterOption(id: id, title: _text('${o['value'] ?? ''}')),
+      ];
+      if (options.isEmpty) return;
+      fields.add(FilterField(
+        key: key,
+        label: '${data['title'] ?? data['label'] ?? key}',
+        options: options,
+        canCombine: data['combine_select'] == true,
+        combinedByDefault: data['combined'] == true,
+      ));
+    });
+    // Most used first; anything the site adds later keeps its own order.
+    const order = ['g', 'c', 'y', 'p', 'q', 'tr'];
+    int rank(FilterField f) {
+      final i = order.indexOf(f.key);
+      return i < 0 ? order.length : i;
+    }
+
+    fields.sort((a, b) => rank(a).compareTo(rank(b)));
+
+    final sorts = <SortOption>[
+      for (final m in RegExp(r'class="js-xs-sort[^"]*"[^>]*data-value="([^"]+)"[^>]*>([^<]*)<')
+          .allMatches(html))
+        SortOption(value: m.group(1)!, label: _text(m.group(2)!)),
+    ];
+    return FiltersConfig(fields: fields, sorts: sorts);
+  }
+
+  /// The site reads the filter from the `xsort` cookie, per page.
+  Future<PaginatedResponse<Post>> fetchFiltered(
+    FilterState filter,
+    FiltersConfig config, {
+    int page = 1,
+  }) async {
+    final path = filter.section.isEmpty ? '/' : _encodePath(filter.section);
+    final String html;
+    try {
+      html = await _get(
+        _withPage(path, page),
+        headers: {'Cookie': 'xsort=${filter.cookieFor(config)}'},
+      );
+    } on DioException catch (e) {
+      // Nothing matching the filter is answered with a 404 page.
+      if (e.response?.statusCode != 404) rethrow;
+      return PaginatedResponse(items: const [], page: page, totalPages: page, total: 0);
+    }
+    final list = _parsePostList(html, page: page);
+    return PaginatedResponse(
+      items: list.items,
+      page: list.page,
+      totalPages: list.totalPages,
+      total: int.tryParse(_first(html, r'id="xsort__count"[^>]*>\s*(\d+)') ?? ''),
+    );
   }
 
   PaginatedResponse<Post> _parsePostList(String html, {int page = 1, String? category}) {

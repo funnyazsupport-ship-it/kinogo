@@ -37,16 +37,7 @@ class HistoryRepository {
     final trimmed = current.take(_max).toList();
     await _prefs.setString(
       _key,
-      jsonEncode(trimmed
-          .map((p) => {
-                'id': p.id,
-                'title': p.title,
-                'poster': p.poster,
-                'year': p.year,
-                'quality': p.quality,
-                'kinopoiskRating': p.kinopoiskRating,
-              })
-          .toList()),
+      jsonEncode(trimmed.map((p) => p.toJson()).toList()),
     );
   }
 

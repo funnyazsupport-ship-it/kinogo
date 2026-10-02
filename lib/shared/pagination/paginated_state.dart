@@ -5,6 +5,7 @@ class PaginatedState<T> {
     this.items = const [],
     this.page = 1,
     this.totalPages = 1,
+    this.total,
     this.isLoadingFirst = false,
     this.isLoadingMore = false,
     this.error,
@@ -13,6 +14,9 @@ class PaginatedState<T> {
   final List<T> items;
   final int page;
   final int totalPages;
+
+  /// Number of matching items overall, when the source reports it.
+  final int? total;
   final bool isLoadingFirst;
   final bool isLoadingMore;
   final Object? error;
@@ -24,6 +28,7 @@ class PaginatedState<T> {
     List<T>? items,
     int? page,
     int? totalPages,
+    int? total,
     bool? isLoadingFirst,
     bool? isLoadingMore,
     Object? error,
@@ -33,6 +38,7 @@ class PaginatedState<T> {
         items: items ?? this.items,
         page: page ?? this.page,
         totalPages: totalPages ?? this.totalPages,
+        total: total ?? this.total,
         isLoadingFirst: isLoadingFirst ?? this.isLoadingFirst,
         isLoadingMore: isLoadingMore ?? this.isLoadingMore,
         error: clearError ? null : (error ?? this.error),

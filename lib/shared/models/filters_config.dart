@@ -1,44 +1,42 @@
-/// Available filter options returned by `/v1/filters`.
-/// Mirrors `shared/models/filters_config.dart`.
+/// Options of the site's catalogue filter (its `window.__XSORT__` config).
 class FiltersConfig {
-  const FiltersConfig({
-    this.genres = const [],
-    this.countries = const [],
-    this.years = const [],
-    this.qualities = const [],
+  const FiltersConfig({this.fields = const [], this.sorts = const []});
+
+  final List<FilterField> fields;
+  final List<SortOption> sorts;
+}
+
+/// One filter dimension (year, genre, country, ...).
+class FilterField {
+  const FilterField({
+    required this.key,
+    required this.label,
+    this.options = const [],
+    this.canCombine = false,
+    this.combinedByDefault = false,
   });
 
-  final List<FilterOption> genres;
-  final List<FilterOption> countries;
-  final List<FilterOption> years;
-  final List<FilterOption> qualities;
+  /// Short field id used by the site (`y`, `g`, `c`, ...).
+  final String key;
+  final String label;
+  final List<FilterOption> options;
 
-  factory FiltersConfig.fromJson(Map<String, dynamic> json) {
-    final data = (json['data'] is Map) ? json['data'] as Map : json;
-    List<FilterOption> parse(Object? v) =>
-        (v as List?)
-            ?.map((e) => e is Map
-                ? FilterOption.fromJson(e.cast<String, dynamic>())
-                : FilterOption(id: '$e', title: '$e'))
-            .toList() ??
-        const [];
-    return FiltersConfig(
-      genres: parse(data['genres'] ?? data['genre']),
-      countries: parse(data['countries'] ?? data['country']),
-      years: parse(data['years'] ?? data['year']),
-      qualities: parse(data['qualities'] ?? data['quality']),
-    );
-  }
+  /// Whether several values can be required at once ("фантастическая
+  /// комедия") instead of matching any of them.
+  final bool canCombine;
+  final bool combinedByDefault;
 }
 
 class FilterOption {
   const FilterOption({required this.id, required this.title});
 
-  final String id;
+  final int id;
   final String title;
+}
 
-  factory FilterOption.fromJson(Map<String, dynamic> json) => FilterOption(
-        id: '${json['id'] ?? json['slug'] ?? json['value'] ?? ''}',
-        title: '${json['title'] ?? json['name'] ?? json['label'] ?? ''}',
-      );
+class SortOption {
+  const SortOption({required this.value, required this.label});
+
+  final String value;
+  final String label;
 }

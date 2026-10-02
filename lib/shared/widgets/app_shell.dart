@@ -13,7 +13,7 @@ class AppShell extends StatelessWidget {
     ('/categories', Icons.grid_view_outlined, Icons.grid_view, 'Категории'),
     ('/search', Icons.search_outlined, Icons.search, 'Поиск'),
     ('/favorites', Icons.favorite_border, Icons.favorite, 'Избранное'),
-    ('/profile', Icons.person_outline, Icons.person, 'Профиль'),
+    ('/history', Icons.history, Icons.history, 'История'),
   ];
 
   @override

@@ -25,17 +25,57 @@ class CategoriesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(title: const Text('Категории')),
-      body: GridView.builder(
-        padding: const EdgeInsets.all(12),
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 220,
-          childAspectRatio: 1.7,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+              child: _FilterEntry(onTap: () => context.push('/catalog')),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.all(12),
+            sliver: SliverGrid.builder(
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 220,
+                childAspectRatio: 1.7,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: kCategories.length,
+              itemBuilder: (context, i) => _CategoryTile(
+                config: kCategories[i],
+                onTap: () => _open(context, kCategories[i]),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Entry to the catalogue filter (genre, country, year, ...).
+class _FilterEntry extends StatelessWidget {
+  const _FilterEntry({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppTheme.surfaceVariant,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        onTap: onTap,
+        leading: const Icon(Icons.tune, color: AppTheme.accent),
+        title: const Text('Подбор по фильтру',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: const Text(
+          'Жанр, страна, год, подборки, качество, перевод',
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
         ),
-        itemCount: kCategories.length,
-        itemBuilder: (context, i) =>
-            _CategoryTile(config: kCategories[i], onTap: () => _open(context, kCategories[i])),
+        trailing: const Icon(Icons.chevron_right),
       ),
     );
   }

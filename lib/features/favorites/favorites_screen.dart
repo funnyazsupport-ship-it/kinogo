@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../shared/pagination/paginated_list_view.dart';
 import '../../shared/widgets/empty_state.dart';
-import '../auth/providers/auth_provider.dart';
+import '../../shared/widgets/movie_card.dart';
 import 'providers/favorites_provider.dart';
 
 class FavoritesScreen extends ConsumerWidget {
@@ -12,41 +10,26 @@ class FavoritesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authed = ref.watch(authProvider).valueOrNull != null;
-
+    final favorites = ref.watch(favoritesProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Избранное')),
-      body: !authed
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const EmptyState(
-                    icon: Icons.favorite_border,
-                    message: 'Войдите, чтобы сохранять фильмы в избранное',
-                  ),
-                  FilledButton(
-                    onPressed: () => context.push('/profile/auth'),
-                    child: const Text('Войти'),
-                  ),
-                ],
-              ),
+      body: favorites.isEmpty
+          ? const EmptyState(
+              icon: Icons.favorite_border,
+              message: 'В избранном пока пусто.\n'
+                  'Нажмите на сердечко на странице фильма, чтобы сохранить его.',
             )
-          : _FavoritesBody(),
-    );
-  }
-}
-
-class _FavoritesBody extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(favoritesProvider);
-    final notifier = ref.read(favoritesProvider.notifier);
-    return PaginatedPostGrid(
-      state: state,
-      onLoadMore: notifier.loadMore,
-      onRefresh: notifier.refresh,
-      emptyMessage: 'В избранном пока пусто',
+          : GridView.builder(
+              padding: const EdgeInsets.all(12),
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 160,
+                childAspectRatio: 0.52,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 14,
+              ),
+              itemCount: favorites.length,
+              itemBuilder: (_, i) => MovieCard(post: favorites[i]),
+            ),
     );
   }
 }

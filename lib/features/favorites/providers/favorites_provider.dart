@@ -1,26 +1,24 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../shared/models/paginated_response.dart';
 import '../../../shared/models/post.dart';
-import '../../../shared/pagination/paginated_notifier.dart';
-import '../../../shared/pagination/paginated_state.dart';
 import '../data/favorites_repository.dart';
 
-class FavoritesNotifier extends PaginatedNotifier<Post> {
-  FavoritesNotifier(this._repo);
+/// Favorited posts, newest first.
+class FavoritesNotifier extends StateNotifier<List<Post>> {
+  FavoritesNotifier(this._repo) : super(_repo.load());
   final FavoritesRepository _repo;
 
-  @override
-  Future<PaginatedResponse<Post>> fetchPage(int page) =>
-      _repo.fetch(page: page);
+  bool contains(int postId) => state.any((p) => p.id == postId);
+
+  Future<void> toggle(Post post) async {
+    state = contains(post.id)
+        ? state.where((p) => p.id != post.id).toList()
+        : [post, ...state];
+    await _repo.save(state);
+  }
 }
 
 final favoritesProvider =
-    StateNotifierProvider<FavoritesNotifier, PaginatedState<Post>>(
+    StateNotifierProvider<FavoritesNotifier, List<Post>>(
   (ref) => FavoritesNotifier(ref.watch(favoritesRepositoryProvider)),
-);
-
-/// Set of favorited post ids for quick bookmark-state lookups.
-final favoriteIdsProvider = FutureProvider<Set<int>>(
-  (ref) => ref.watch(favoritesRepositoryProvider).fetchIds(),
 );

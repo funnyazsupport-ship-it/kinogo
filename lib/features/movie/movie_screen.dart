@@ -8,6 +8,8 @@ import '../../shared/models/post.dart';
 import '../../shared/widgets/error_retry_row.dart';
 import '../../shared/widgets/kp_rating_badge.dart';
 import '../../shared/widgets/movie_card.dart';
+import '../favorites/providers/favorites_provider.dart';
+import '../history/providers/history_provider.dart';
 import 'providers/movie_provider.dart';
 import 'widgets/movie_comments.dart';
 
@@ -38,6 +40,8 @@ class _MovieBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final related = ref.watch(relatedProvider(post.id));
+    final isFavorite =
+        ref.watch(favoritesProvider).any((p) => p.id == post.id);
     final rating = post.kinopoiskRating ?? post.imdbRating ?? post.rating;
 
     return CustomScrollView(
@@ -45,6 +49,15 @@ class _MovieBody extends ConsumerWidget {
         SliverAppBar(
           expandedHeight: 320,
           pinned: true,
+          actions: [
+            IconButton(
+              icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+              color: isFavorite ? Colors.redAccent : null,
+              tooltip: isFavorite ? 'Убрать из избранного' : 'В избранное',
+              onPressed: () =>
+                  ref.read(favoritesProvider.notifier).toggle(post),
+            ),
+          ],
           flexibleSpace: FlexibleSpaceBar(
             background: Stack(
               fit: StackFit.expand,
@@ -100,8 +113,10 @@ class _MovieBody extends ConsumerWidget {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: () =>
-                        context.push('/movie/${post.id}/player', extra: post.title),
+                    onPressed: () {
+                      ref.read(historyProvider.notifier).add(post);
+                      context.push('/movie/${post.id}/player', extra: post.title);
+                    },
                     icon: const Icon(Icons.play_arrow_rounded),
                     label: const Text('Смотреть'),
                   ),

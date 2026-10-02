@@ -48,6 +48,20 @@ class Post {
     return '${AppConfig.siteBaseUrl}${p.startsWith('/') ? '' : '/'}$p';
   }
 
+  /// Compact form for local storage (history, favorites); read back by
+  /// [Post.fromJson].
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'poster': poster,
+        'year': year,
+        'quality': quality,
+        'kinopoiskRating': kinopoiskRating,
+        'imdbRating': imdbRating,
+        'rating': rating,
+        'isSeries': isSeries,
+      };
+
   factory Post.fromJson(Map<String, dynamic> json) {
     double? asDouble(Object? v) =>
         v == null ? null : (v is num ? v.toDouble() : double.tryParse('$v'));

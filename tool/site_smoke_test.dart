@@ -4,6 +4,7 @@
 import 'dart:io';
 
 import 'package:kinogo/core/api/kinogo_web_service.dart';
+import 'package:kinogo/shared/models/filter_state.dart';
 
 Future<void> main() async {
   final service = KinogoWebService();
@@ -70,6 +71,49 @@ Future<void> main() async {
     final posts = await service.fetchCategoryPosts(p.slug!);
     check('podborka posts', posts.items.isNotEmpty, '${posts.items.length}');
   }
+
+  // Catalogue filter: комедия + Россия + 2025.
+  final config = await service.fetchFiltersConfig();
+  check('filter config', config.fields.length >= 6 && config.sorts.length >= 6,
+      '${config.fields.map((f) => '${f.label}=${f.options.length}').join(', ')}, '
+      'sorts=${config.sorts.length}');
+  int idOf(String field, String title) => config.fields
+      .firstWhere((f) => f.key == field)
+      .options
+      .firstWhere((o) => o.title == title)
+      .id;
+  final filter = const FilterState()
+      .withField('g', {idOf('g', 'комедия')})
+      .withField('c', {idOf('c', 'Россия')})
+      .withField('y', {idOf('y', '2025')});
+  print('     cookie=${filter.cookieFor(config)}');
+  final filtered = await service.fetchFiltered(filter, config);
+  check(
+    'filter комедия+Россия+2025',
+    // The genre filter uses a field the list cards do not always show, so
+    // only year and country are checked on each card.
+    filtered.items.isNotEmpty &&
+        (filtered.total ?? 0) > 0 &&
+        filtered.items
+            .every((p) => p.year == '2025' && p.countries.contains('Россия')),
+    '${filtered.items.length} posts, total=${filtered.total}, pages=${filtered.totalPages}',
+  );
+  final filtered2 = await service.fetchFiltered(filter, config, page: 2);
+  check('filter page 2',
+      filtered2.items.isNotEmpty && filtered2.items.first.id != filtered.items.first.id);
+  final inSection = await service.fetchFiltered(
+      filter.copyWith(section: 'serialy', sort: 'kp'), config);
+  check('filter in section serialy',
+      inSection.items.isNotEmpty && inSection.items.every((p) => p.isSeries),
+      '${inSection.items.length} posts, total=${inSection.total}');
+  final nothing = await service.fetchFiltered(
+    const FilterState()
+        .withField('y', {idOf('y', '1960')})
+        .withField('c', {idOf('c', 'Азербайджан')})
+        .withField('g', {idOf('g', 'новости'), idOf('g', 'игра')}),
+    config,
+  );
+  check('filter with no matches', nothing.items.isEmpty, 'total=${nothing.total}');
 
   print(failures.isEmpty ? '\nAll checks passed.' : '\nFAILED: ${failures.join(', ')}');
   exit(failures.isEmpty ? 0 : 1);

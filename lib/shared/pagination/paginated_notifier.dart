@@ -17,12 +17,16 @@ abstract class PaginatedNotifier<T> extends StateNotifier<PaginatedState<T>> {
     state = state.copyWith(isLoadingFirst: true, clearError: true);
     try {
       final res = await fetchPage(1);
+      // The notifier may have been disposed while the page was loading.
+      if (!mounted) return;
       state = PaginatedState<T>(
         items: res.items,
         page: res.page,
         totalPages: res.totalPages,
+        total: res.total,
       );
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(isLoadingFirst: false, error: e);
     }
   }
@@ -33,6 +37,7 @@ abstract class PaginatedNotifier<T> extends StateNotifier<PaginatedState<T>> {
     try {
       final next = state.page + 1;
       final res = await fetchPage(next);
+      if (!mounted) return;
       state = state.copyWith(
         items: [...state.items, ...res.items],
         page: res.page,
@@ -40,6 +45,7 @@ abstract class PaginatedNotifier<T> extends StateNotifier<PaginatedState<T>> {
         isLoadingMore: false,
       );
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(isLoadingMore: false, error: e);
     }
   }

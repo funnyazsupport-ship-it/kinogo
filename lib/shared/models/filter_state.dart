@@ -1,67 +1,88 @@
-/// Currently applied browse filters/sort. Mirrors `shared/models/filter_state.dart`.
-enum SortBy { dateDesc, dateAsc, ratingDesc, popularityDesc }
+import 'filters_config.dart';
 
-extension SortByLabel on SortBy {
-  String get label => switch (this) {
-        SortBy.dateDesc => 'Сначала новые',
-        SortBy.dateAsc => 'Сначала старые',
-        SortBy.ratingDesc => 'По рейтингу',
-        SortBy.popularityDesc => 'По популярности',
-      };
+/// A site section the catalogue filter can be limited to.
+class CatalogSection {
+  const CatalogSection(this.slug, this.title);
 
-  String get apiValue => switch (this) {
-        SortBy.dateDesc => 'date_desc',
-        SortBy.dateAsc => 'date_asc',
-        SortBy.ratingDesc => 'rating_desc',
-        SortBy.popularityDesc => 'popularity_desc',
-      };
+  /// Category slug on the site; empty for the whole catalogue.
+  final String slug;
+  final String title;
 }
 
+const List<CatalogSection> kCatalogSections = [
+  CatalogSection('', 'Всё'),
+  CatalogSection('filmy', 'Фильмы'),
+  CatalogSection('serialy', 'Сериалы'),
+  CatalogSection('russkie-serialy', 'Русские сериалы'),
+  CatalogSection('zarubezhnye-serialy', 'Зарубежные сериалы'),
+  CatalogSection('tureckie-serialy', 'Турецкие сериалы'),
+  CatalogSection('multfilmy', 'Мультфильмы'),
+  CatalogSection('multserialy', 'Мультсериалы'),
+  CatalogSection('anime', 'Аниме'),
+  CatalogSection('doramy', 'Дорамы'),
+  CatalogSection('tv-shou', 'ТВ-шоу'),
+  CatalogSection('v1new', 'Новинки'),
+  CatalogSection('korotkometrazhka', 'Короткометражки'),
+];
+
+const String kDefaultSort = 'date';
+
+/// Currently applied catalogue filters and sort.
 class FilterState {
   const FilterState({
-    this.genre,
-    this.country,
-    this.year,
-    this.quality,
-    this.sortBy = SortBy.dateDesc,
+    this.section = '',
+    this.sort = kDefaultSort,
+    this.selected = const {},
+    this.combined = const {},
   });
 
-  final String? genre;
-  final String? country;
-  final String? year;
-  final String? quality;
-  final SortBy sortBy;
+  final String section;
+  final String sort;
 
-  bool get isEmpty =>
-      genre == null && country == null && year == null && quality == null;
+  /// Field key → selected option ids.
+  final Map<String, Set<int>> selected;
 
-  int get activeCount =>
-      [genre, country, year, quality].where((e) => e != null).length;
+  /// Field key → whether all selected values are required at once.
+  final Map<String, bool> combined;
 
-  FilterState copyWith({
-    String? genre,
-    String? country,
-    String? year,
-    String? quality,
-    SortBy? sortBy,
-    bool clearGenre = false,
-    bool clearCountry = false,
-    bool clearYear = false,
-    bool clearQuality = false,
-  }) =>
-      FilterState(
-        genre: clearGenre ? null : (genre ?? this.genre),
-        country: clearCountry ? null : (country ?? this.country),
-        year: clearYear ? null : (year ?? this.year),
-        quality: clearQuality ? null : (quality ?? this.quality),
-        sortBy: sortBy ?? this.sortBy,
+  Set<int> valuesOf(String field) => selected[field] ?? const {};
+
+  bool isCombined(FilterField field) =>
+      combined[field.key] ?? field.combinedByDefault;
+
+  bool get hasFilters => selected.values.any((s) => s.isNotEmpty);
+
+  bool get isDefault => section.isEmpty && sort == kDefaultSort && !hasFilters;
+
+  FilterState copyWith({String? section, String? sort}) => FilterState(
+        section: section ?? this.section,
+        sort: sort ?? this.sort,
+        selected: selected,
+        combined: combined,
       );
 
-  Map<String, dynamic> toQuery() => {
-        if (genre != null) 'genre': genre,
-        if (country != null) 'country': country,
-        if (year != null) 'year': year,
-        if (quality != null) 'quality': quality,
-        'sort': sortBy.apiValue,
-      };
+  FilterState withField(String field, Set<int> values, {bool? combine}) =>
+      FilterState(
+        section: section,
+        sort: sort,
+        selected: {...selected, field: values},
+        combined: combine == null ? combined : {...combined, field: combine},
+      );
+
+  /// Site path of the filtered list.
+  String get path => section.isEmpty ? '/' : '/$section/';
+
+  /// Value of the site's `xsort` cookie, which carries the filter:
+  /// `<page>|<sort>|<field>=<ids>/<field>=<ids>`.
+  String cookieFor(FiltersConfig config) {
+    final pageId = section.isEmpty ? 'main' : 'cat__$section';
+    final parts = <String>[];
+    for (final field in config.fields) {
+      final ids = valuesOf(field.key).toList()..sort();
+      if (ids.isEmpty) continue;
+      final mode = !field.canCombine ? '' : (isCombined(field) ? '%2B' : '*');
+      parts.add('${field.key}=$mode${ids.join(',')}');
+    }
+    return '$pageId|$sort|${parts.join('/')}';
+  }
 }
